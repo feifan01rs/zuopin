@@ -926,10 +926,14 @@ function renderDateStrip(){
   if(bt) bt.classList.toggle('hidden', curDay === 0);
 }
 
+/* 上游只给到「天」的场次（羽毛球）：dt 是占位的 UTC 00:00（北京 08:00），
+   时刻不可信 —— 排序时垫底，也不参与「正在进行 / 最近一场」的判断 */
+function isTBD(m){ return m.time === '待定' || m.time === '全天'; }
+
 /* ================= 赛程行 ================= */
 function timeTagHTML(m){
   // 羽毛球的开赛时刻上游只给到「天」（time='待定'/'全天'），无从判断是否正在进行
-  if(m.time === '待定' || m.time === '全天') return '';
+  if(isTBD(m)) return '';
   const now = new Date();
   if(m.day===0 && m.dt < now) return `<span class="live-tag">进行中</span>`;
   if(m.day>=1 && m.dt.getHours()<8) return `<span class="live-tag warn">凌晨</span>`;
@@ -943,7 +947,8 @@ function vsText(m){
 function renderMatches(){
   const list = document.getElementById('matchList');
   const all = MATCHES.filter(m=>m.day===curDay && (curSport==='all'||m.sport===curSport))
-                    .sort((a,b)=>a.dt-b.dt);
+                    // 时刻待定的垫底：否则它们的占位 dt（08:00）会插到当天所有足球/电竞前面
+                    .sort((a,b)=>(isTBD(a)?1:0)-(isTBD(b)?1:0) || a.dt-b.dt);
   const mc = document.getElementById('matchCount');
   if(mc) mc.textContent = `${all.length} 场`;
 
@@ -973,7 +978,7 @@ function renderMatches(){
             <svg width="14" height="14" viewBox="0 0 24 24" fill="${(m.followed||m.remind)?'currentColor':'none'}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.2 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>
           </button>
           <div class="mtime">
-            <b class="${(m.time==='待定'||m.time==='全天')?'sm':''}">${esc(m.time)}</b>
+            <b class="${isTBD(m)?'sm':''}">${esc(m.time)}</b>
             <span>${dayShort(m)}</span>
             ${timeTagHTML(m)}
           </div>
@@ -1228,9 +1233,11 @@ function updateLiveSub(ch){
 /* 当前/最近的一场比赛：优先正在进行的，其次下一场 */
 function featuredMatch(){
   const now = Date.now();
-  const live = MATCHES.filter(m => m.dt <= now && now - m.dt < 2.5*3600e3).sort((a,b)=>b.dt-a.dt)[0];
+  const live = MATCHES.filter(m => !isTBD(m) && m.dt <= now && now - m.dt < 2.5*3600e3).sort((a,b)=>b.dt-a.dt)[0];
   if(live) return { m: live, live: true };
-  const next = MATCHES.filter(m => m.dt > now).sort((a,b)=>a.dt-b.dt)[0];
+  const soon = MATCHES.filter(m => m.dt > now);
+  const next = soon.filter(m => !isTBD(m)).sort((a,b)=>a.dt-b.dt)[0]
+            || soon.sort((a,b)=>a.dt-b.dt)[0];
   return next ? { m: next, live: false } : null;
 }
 
@@ -1381,7 +1388,9 @@ function toast(msg, good=true){
 /* ================= 倒计时 ================= */
 function tick(){
   const now = new Date();
-  const next = MATCHES.filter(m=>m.dt>now).sort((a,b)=>a.dt-b.dt)[0];
+  const soon = MATCHES.filter(m=>m.dt>now);
+  const next = soon.filter(m=>!isTBD(m)).sort((a,b)=>a.dt-b.dt)[0]
+            || soon.sort((a,b)=>a.dt-b.dt)[0];
   const tEl = document.getElementById('cdTime'), nEl = document.getElementById('cdTitle');
   if(!tEl||!nEl) return;
   if(!next){ nEl.textContent='近期赛事已播完'; tEl.textContent='--:--:--'; return; }
