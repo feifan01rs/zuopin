@@ -1,0 +1,16 @@
+# ⚠️ 绝不能上传：API Key（请改用 Vercel 后台的 Environment Variables）
+.env
+.env.local
+
+# 本地开发用的东西，Vercel 上不需要
+server.js
+启动.bat
+tools/
+build/
+tmp/
+cache/
+run.log
+*.log
+node_modules/
+.vercel
+.git/

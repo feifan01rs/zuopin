@@ -1,0 +1,17 @@
+# 敏感文件：API Key 绝不能提交
+.env
+.env.local
+.env.*.local
+
+# 运行时产物
+cache/
+run.log
+*.log
+tmp/
+node_modules/
+.vercel
+
+# 系统垃圾
+Thumbs.db
+.DS_Store
+desktop.ini

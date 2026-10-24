@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>海风看球 · 观赛预告</title>
+<!-- ============================================================
+     纯手写 CSS 版本（不再依赖 Tailwind / CDN）
+     深色监控台风格：左侧图标栏 + 顶栏 + Hero + 行式赛程 + 右侧直播面板
+     改样式直接改下面这个 <style>，不需要重新编译
+     ============================================================ -->
+<style>
+:root{
+  --bg:#07080B; --bg2:#0A0B0F;
+  --panel:#101218; --panel2:#151821; --panel3:#1A1E28;
+  --line:#1E222C; --line2:#2A303D;
+  --txt:#ECEEF4; --txt2:#A3A9B8; --txt3:#6B7280;
+  --blue:#2E8BFF; --blue2:#5AA8FF; --violet:#7B5CFF;
+  --live:#FF4D5E; --ok:#2ED47A; --gold:#FFC53D;
+  --r:18px; --r2:12px;
+  --num:"DIN Alternate",Bahnschrift,"Bahnschrift SemiBold",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+  background:
+    radial-gradient(900px 520px at 8% -12%,rgba(46,139,255,.16),transparent 62%),
+    radial-gradient(760px 460px at 92% -6%,rgba(123,92,255,.14),transparent 60%),
+    var(--bg);
+  color:var(--txt); font-size:14px; line-height:1.5;
+  min-height:100vh; -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+svg{display:block}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums}
+.muted{color:var(--txt3)}
+.hidden{display:none!important}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#242A36;border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ================= 外壳布局 ================= */
+.shell{display:flex;min-height:100vh}
+.rail{
+  width:68px;flex:0 0 68px;background:rgba(10,11,15,.92);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0 18px;
+  position:sticky;top:0;height:100vh;z-index:60;backdrop-filter:blur(10px);
+}
+.rail-logo{
+  width:40px;height:40px;border-radius:13px;display:grid;place-items:center;margin-bottom:12px;
+  background:linear-gradient(145deg,#2E8BFF,#7B5CFF);box-shadow:0 8px 22px rgba(46,139,255,.35);
+}
+.rail-btn{
+  width:42px;height:42px;border-radius:13px;display:grid;place-items:center;color:#5F6675;
+  transition:.18s;position:relative;
+}
+.rail-btn:hover{background:var(--panel2);color:var(--txt2)}
+.rail-btn.on{background:var(--panel3);color:#fff;box-shadow:inset 0 0 0 1px var(--line2)}
+.rail-btn.on::before{content:"";position:absolute;left:-14px;top:11px;bottom:11px;width:2px;border-radius:2px;background:var(--blue)}
+.rail-sep{width:24px;height:1px;background:var(--line);margin:8px 0}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:6px}
+
+.workspace{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{
+  height:64px;display:flex;align-items:center;gap:18px;padding:0 22px;
+  border-bottom:1px solid var(--line);background:rgba(8,9,12,.72);
+  backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;letter-spacing:.3px}
+.brand .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.topnav{display:flex;align-items:center;gap:4px;margin-left:10px}
+.topnav a{padding:7px 12px;border-radius:9px;font-size:13px;color:var(--txt2);font-weight:600;transition:.15s}
+.topnav a:hover{background:var(--panel2);color:var(--txt)}
+.topnav a.on{color:#fff;background:var(--panel2)}
+.spacer{flex:1}
+
+.icon-btn{
+  height:38px;padding:0 13px;border-radius:11px;display:inline-flex;align-items:center;gap:7px;
+  background:var(--panel2);border:1px solid var(--line);color:var(--txt2);font-size:12.5px;font-weight:600;transition:.15s;
+}
+.icon-btn:hover{background:var(--panel3);color:var(--txt)}
+.icon-btn .cnt{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--gold);color:#3A2C00;font-size:10.5px;font-weight:800;display:grid;place-items:center}
+.btn-primary{
+  height:38px;padding:0 16px;border-radius:11px;display:inline-flex;align-items:center;gap:7px;
+  background:linear-gradient(180deg,#3D97FF,#2E8BFF);color:#fff;font-size:13px;font-weight:700;
+  box-shadow:0 6px 18px rgba(46,139,255,.32),inset 0 1px 0 rgba(255,255,255,.25);transition:.15s;
+}
+.btn-primary:hover{filter:brightness(1.08)}
+
+/* 防剧透开关 */
+.switch-wrap{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;color:var(--txt2);font-size:12.5px;font-weight:600}
+.switch{width:38px;height:21px;border-radius:11px;background:#252B38;position:relative;transition:.18s;flex:0 0 auto}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:#fff;transition:.18s}
+.switch.on{background:var(--gold)}
+.switch.on::after{transform:translateX(17px)}
+
+/* ================= 主内容 ================= */
+.content{padding:20px 22px 8px;max-width:1500px;width:100%;margin:0 auto}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start}
+.col-main{min-width:0;display:flex;flex-direction:column;gap:14px}
+.col-side{min-width:0;display:flex;flex-direction:column;gap:14px;position:sticky;top:84px}
+
+.panel{background:linear-gradient(180deg,rgba(20,23,30,.92),rgba(15,17,23,.96));border:1px solid var(--line);border-radius:var(--r)}
+.panel-head{display:flex;align-items:center;gap:10px;padding:15px 18px 13px}
+.panel-head h2{margin:0;font-size:14px;font-weight:800;letter-spacing:.2px}
+.panel-head .hint{font-size:11.5px;color:var(--txt3);font-weight:600}
+.panel-head .link{margin-left:auto;font-size:11.5px;color:var(--blue2);font-weight:700}
+
+/* ================= Hero ================= */
+.hero{
+  position:relative;overflow:hidden;border-radius:20px;min-height:216px;
+  background:
+    radial-gradient(600px 260px at 78% 10%,rgba(123,92,255,.32),transparent 68%),
+    radial-gradient(520px 240px at 20% 110%,rgba(46,139,255,.30),transparent 70%),
+    linear-gradient(120deg,#121729 0%,#141428 45%,#0E1120 100%);
+  border:1px solid #232A3C;
+  display:flex;align-items:stretch;
+}
+.hero::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.028) 0 1px,transparent 1px 8px);
+}
+.hero-body{padding:26px 28px;position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;max-width:560px}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:10.5px;font-weight:800;letter-spacing:2px;color:#8FB8FF;text-transform:uppercase}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--live);box-shadow:0 0 10px var(--live)}
+.hero h1{margin:10px 0 6px;font-size:31px;line-height:1.18;font-weight:800;letter-spacing:-.5px}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,#6FB6FF,#A98BFF);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{margin:0;color:#97A2B8;font-size:12.5px}
+.hero-actions{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+.cd{
+  display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:13px;
+  background:rgba(9,11,18,.62);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(8px);
+}
+.cd b{display:block;font-size:12.5px;font-weight:700;color:#E7ECF7;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cd small{font-size:10.5px;color:#8A94A8}
+.cd .t{font-family:var(--num);font-size:15px;font-weight:800;color:#7FC0FF}
+.hero-tag{
+  display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#B9C6DE;
+  padding:7px 11px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);
+}
+.hero-art{position:absolute;right:-10px;top:0;bottom:0;width:44%;pointer-events:none;opacity:.95}
+
+/* ================= 筛选条 ================= */
+.filter{padding:14px 16px 15px}
+.filter-head{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.filter-head .label{font-size:10.5px;font-weight:800;letter-spacing:1.6px;color:var(--txt3);text-transform:uppercase}
+.filter-head button{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--blue2)}
+.strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;
+  /* 右边缘渐隐，提示「还能往右滑」，也避免最后一格被硬切成半截 */
+  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 26px),transparent 100%);
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 26px),transparent 100%);}
+.dcell{
+  flex:0 0 auto;min-width:64px;padding:8px 10px;border-radius:12px;text-align:center;
+  background:var(--panel2);border:1px solid transparent;transition:.15s;
+}
+.dcell:hover{background:var(--panel3)}
+.dcell b{display:block;font-size:12.5px;font-weight:700;color:var(--txt2);white-space:nowrap}
+.dcell span{display:block;font-size:10.5px;color:var(--txt3);margin-top:1px}
+.dcell i{display:block;font-size:10px;font-style:normal;color:#4E5666;margin-top:2px}
+.dcell.on{background:linear-gradient(180deg,#2F8DFF,#2477DC);border-color:#5AA8FF;box-shadow:0 6px 16px rgba(46,139,255,.3)}
+.dcell.on b,.dcell.on span,.dcell.on i{color:#fff}
+.dcell.on i{opacity:.9}
+.pills{display:flex;gap:8px;margin-top:12px;overflow-x:auto;padding-bottom:2px}
+.pill{
+  flex:0 0 auto;padding:7px 14px;border-radius:10px;font-size:12.5px;font-weight:700;
+  background:var(--panel2);color:var(--txt2);border:1px solid transparent;transition:.15s;white-space:nowrap;
+}
+.pill:hover{background:var(--panel3);color:var(--txt)}
+.pill.on{background:#fff;color:#0B0D12;border-color:#fff}
+
+/* ================= 赛程行 ================= */
+.mgroup-head{display:flex;align-items:center;gap:9px;padding:12px 18px 8px}
+.mgroup-head .gname{font-size:11.5px;font-weight:800;letter-spacing:.4px;color:#C6CDDC}
+.mgroup-head .gcnt{padding:1px 7px;border-radius:7px;background:var(--panel3);font-size:10.5px;font-weight:800;color:#8C95A8}
+.mgroup-head .gline{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.mgroup-head .gtip{font-size:10.5px;color:#4E5666;font-weight:700}
+.mlist{padding:0 6px 6px}
+/* 空态 / 加载态：千万不要复用 .mrow —— 它是 8 列 grid，文字会被一列一列挤成竖排 */
+.empty{display:flex;align-items:center;justify-content:center;gap:9px;padding:34px 14px;color:var(--txt3);font-size:12.5px;text-align:center}
+.spinner{width:13px;height:13px;border-radius:50%;border:2px solid #2A3140;border-top-color:var(--blue);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mrow{
+  display:grid;grid-template-columns:28px 58px minmax(0,1.1fr) 44px minmax(0,1.1fr) auto 82px 14px;
+  align-items:center;gap:9px;padding:11px 12px;border-radius:12px;cursor:pointer;transition:.14s;
+  border:1px solid transparent;
+}
+.mrow:hover{background:var(--panel2);border-color:var(--line)}
+.star{color:#3A4150;display:grid;place-items:center;width:26px;height:26px;border-radius:8px;transition:.15s}
+.star:hover{background:var(--panel3);color:var(--gold)}
+.star.on{color:var(--gold)}
+.mtime{text-align:center}
+.mtime b{display:block;font-family:var(--num);font-size:13.5px;font-weight:800;color:#E4E9F3}
+.mtime b.sm{font-family:inherit;font-size:11.5px;color:#8C95A8}
+.mtime span{display:block;font-size:10px;color:#5B6373;margin-top:1px}
+.mtime .live-tag{display:inline-block;margin-top:2px;font-size:9.5px;font-weight:800;color:var(--ok)}
+.mtime .live-tag.warn{color:var(--gold)}
+
+.mteam{display:flex;align-items:center;gap:9px;min-width:0}
+/* 对齐方式照参考图：两边队伍都向中间靠，Logo 朝外 —— 扫读时「谁打谁」是连续的 */
+.mteam.home{justify-content:flex-end}
+.mteam.away{justify-content:flex-start}
+.mteam .tname{font-size:13.5px;font-weight:700;color:#E9EDF6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mteam .tname.dim{color:#8C95A8;font-weight:600}
+.ava{
+  width:27px;height:27px;flex:0 0 27px;border-radius:50%;display:grid;place-items:center;
+  font-size:10.5px;font-weight:800;color:#fff;letter-spacing:-.2px;
+  background:linear-gradient(145deg,var(--c1,#3A4A6B),var(--c2,#22304A));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);
+}
+.mmid{display:flex;flex-direction:column;align-items:center;gap:2px}
+.mmid .vs{font-size:10px;font-weight:800;color:#5B6373;letter-spacing:.5px}
+.mmid .bo{font-size:9.5px;font-weight:800;color:#7E8BA3;background:var(--panel3);padding:1px 5px;border-radius:5px}
+.mchan{display:flex;gap:5px;justify-content:flex-end;max-width:186px;overflow:hidden}
+.chip{font-size:10px;font-weight:700;color:#9AA6BD;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.06);padding:2px 7px;border-radius:6px;white-space:nowrap}
+.live-chip{
+  display:inline-flex;align-items:center;gap:5px;justify-content:center;min-width:74px;
+  font-size:11px;font-weight:800;color:#FF8A94;background:rgba(255,77,94,.12);
+  border:1px solid rgba(255,77,94,.28);padding:5px 9px;border-radius:9px;transition:.15s;
+}
+.live-chip:hover{background:rgba(255,77,94,.2);color:#FFB0B6}
+.live-chip.ghost{color:#5B6373;background:rgba(255,255,255,.03);border-color:var(--line);font-weight:600}
+.chev{color:#39404E}
+
+/* ================= 右侧直播面板 ================= */
+.live-card{overflow:hidden}
+.live-head{display:flex;align-items:center;gap:8px;padding:14px 16px 10px}
+.live-head .rlive{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 12px var(--live);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.82)}}
+.pager{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--txt3)}
+.pager button{width:22px;height:22px;border-radius:7px;background:var(--panel2);display:grid;place-items:center;color:var(--txt2)}
+.pager button:hover{background:var(--panel3)}
+.live-sub{padding:0 16px 11px;font-size:11.5px;color:var(--txt2);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.live-sub .sep{color:#3A4150}
+.live-sub b{color:#DDE4F0;font-weight:700}
+.live-sub .note{flex:1 1 100%;font-size:10.5px;color:#5B6373;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.player{position:relative;margin:0 12px;border-radius:13px;overflow:hidden;background:#05070B;aspect-ratio:16/9;border:1px solid var(--line2)}
+.player video,.player iframe,.m-player video,.m-player iframe{width:100%;height:100%;display:block;border:0;object-fit:cover;background:#000}
+.player .ph,.m-player .ph{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  background:
+    radial-gradient(400px 200px at 70% 20%,rgba(46,139,255,.18),transparent 70%),
+    linear-gradient(160deg,#111726,#0A0D14);
+  color:#7E8798;font-size:11.5px;text-align:center;padding:16px;
+}
+.player .ph .big,.m-player .ph .big{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.92);color:#0B0D12;display:grid;place-items:center;box-shadow:0 10px 28px rgba(0,0,0,.5)}
+.player .ph .big.playable,.m-player .ph .big.playable{background:linear-gradient(180deg,#3D97FF,#2E8BFF);color:#fff;cursor:pointer}
+.player .tag,.m-player .tag{position:absolute;left:9px;top:9px;display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:7px;background:rgba(6,8,13,.72);backdrop-filter:blur(6px);font-size:10px;font-weight:800;color:#DCE4F2;z-index:3}
+.player .tag i,.m-player .tag i{width:5px;height:5px;border-radius:50%;background:var(--live)}
+.player .err,.m-player .err{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(6,8,13,.86);font-size:11.5px;color:#9AA6BD;text-align:center;padding:16px;z-index:4}
+
+.scoreboard{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px 4px}
+.sb-team{display:flex;align-items:center;gap:7px;min-width:0;flex:1}
+.sb-team.r{justify-content:flex-end}
+.sb-team .nm{font-size:12px;font-weight:700;color:#DDE4F0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-score{font-family:var(--num);font-size:20px;font-weight:800;color:#fff;min-width:58px;text-align:center}
+.sb-score small{display:block;font-family:inherit;font-size:9.5px;font-weight:700;color:var(--txt3);letter-spacing:.4px}
+.chan-list{display:flex;flex-direction:column;gap:3px;padding:10px 10px 12px;max-height:184px;overflow-y:auto}
+.chan{
+  display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;transition:.14s;
+  border:1px solid transparent;text-align:left;width:100%;
+}
+.chan:hover{background:var(--panel2)}
+.chan.on{background:var(--panel3);border-color:var(--line2)}
+.chan .st{width:6px;height:6px;border-radius:50%;background:#3E4553;flex:0 0 6px}
+.chan .st.ok{background:var(--ok);box-shadow:0 0 8px rgba(46,212,122,.6)}
+.chan .st.bad{background:#5A3038}
+.chan .nm{font-size:12px;font-weight:700;color:#D2D9E6;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chan .bd{font-size:9.5px;font-weight:800;color:#8C95A8;background:rgba(255,255,255,.05);padding:1px 6px;border-radius:5px;flex:0 0 auto}
+.chan .go{color:#4E5666;font-size:11px}
+
+/* ================= 最新赛果（右栏） ================= */
+.mini-list{padding:0 8px 8px}
+.mini{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 10px;border-radius:10px;transition:.14s}
+.mini:hover{background:var(--panel2)}
+.mini .l{min-width:0}
+.mini .lg{font-size:9.5px;font-weight:800;letter-spacing:.4px;color:#5B6373;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini .tm{font-size:11.5px;font-weight:700;color:#CBD3E1;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini .sc{font-family:var(--num);font-size:13px;font-weight:800;color:#fff;background:var(--panel3);padding:3px 8px;border-radius:7px}
+
+/* ================= 赛果区 ================= */
+.results{margin-top:16px}
+.res-head{display:flex;align-items:center;gap:10px;padding:15px 18px 10px;flex-wrap:wrap}
+.res-head h2{margin:0;font-size:14px;font-weight:800}
+.res-head .hint{font-size:11.5px;color:var(--txt3);font-weight:700}
+.rpills{display:flex;gap:6px;margin-left:auto}
+.rpill{padding:5px 11px;border-radius:9px;font-size:11.5px;font-weight:700;background:var(--panel2);color:var(--txt2);transition:.15s}
+.rpill:hover{background:var(--panel3)}
+.rpill.on{background:#fff;color:#0B0D12}
+.res-body{padding:0 14px 16px}
+.rday{display:flex;align-items:center;gap:9px;padding:12px 6px 9px}
+.rday b{font-family:var(--num);font-size:12px;font-weight:800;color:#C6CDDC}
+.rday .wd{font-size:10.5px;color:#5B6373}
+.rday .tag{font-size:9.5px;font-weight:800;color:var(--ok)}
+.rday .ln{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.rday .cnt{font-size:10.5px;color:#4E5666;font-family:var(--num)}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(216px,1fr));gap:9px}
+.rcard{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;transition:.15s}
+.rcard:hover{border-color:var(--line2);background:var(--panel3)}
+.rcard .lg{font-size:9.5px;font-weight:800;letter-spacing:.4px;color:#5B6373;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcard .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px}
+.rcard .tms{min-width:0;font-size:12px;font-weight:700;color:#CDD5E3;line-height:1.45}
+.rcard .tms span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcard .tms span.lose{color:#8C95A8;font-weight:600}
+.rcard .sc{font-family:var(--num);font-size:17px;font-weight:800;color:#fff;white-space:nowrap}
+.rcard .tm{font-size:10px;color:#4E5666;margin-top:6px;font-family:var(--num)}
+.rcard .sc.blur{filter:blur(7px);cursor:pointer;user-select:none}
+.remore{grid-column:1/-1;padding:13px;border-radius:12px;border:1px dashed var(--line2);color:var(--blue2);font-size:12px;font-weight:700;transition:.15s}
+.remore:hover{background:var(--panel2)}
+
+/* ================= 诊断 / Toast / Modal ================= */
+.diag{
+  margin-bottom:14px;padding:11px 14px;border-radius:12px;font-size:12px;line-height:1.6;
+  background:rgba(255,197,61,.09);border:1px solid rgba(255,197,61,.28);color:#F0D79B;
+  border-left:3px solid var(--gold);
+}
+.diag b{color:#FFE3A8}
+
+#toastBox{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{display:flex;align-items:center;gap:9px;background:#171B24;border:1px solid var(--line2);color:#E6EBF5;font-size:12.5px;font-weight:600;padding:10px 16px;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55);animation:toast-in .22s ease}
+.toast i{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.toast.bad i{background:var(--live)}
+@keyframes toast-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+.modal{position:fixed;inset:0;z-index:110;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.modal-bg{position:absolute;inset:0;background:rgba(4,6,10,.72);backdrop-filter:blur(6px)}
+.modal-panel{
+  position:relative;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;
+  background:linear-gradient(180deg,#14171F,#0F1218);border:1px solid var(--line2);border-radius:18px;
+  box-shadow:0 30px 80px rgba(0,0,0,.65);animation:pop .2s ease;
+}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.m-body{padding:20px}
+.m-top{display:flex;align-items:flex-start;gap:12px}
+.m-top h3{margin:4px 0 0;font-size:19px;font-weight:800;line-height:1.3}
+.m-league{font-size:10.5px;font-weight:800;letter-spacing:1.2px;color:#6E8BB8;text-transform:uppercase}
+.m-close{width:30px;height:30px;border-radius:9px;background:var(--panel2);display:grid;place-items:center;color:var(--txt2);flex:0 0 auto}
+.m-close:hover{background:var(--panel3);color:#fff}
+.m-meta{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--txt2);flex-wrap:wrap}
+.m-meta .k{color:#8FA0BC;font-weight:700}
+.m-sec{margin-top:16px;padding:13px 14px;border-radius:12px;background:rgba(255,255,255,.028);border:1px solid var(--line)}
+.m-sec .t{font-size:10.5px;font-weight:800;letter-spacing:1px;color:#6E8BB8;text-transform:uppercase;margin-bottom:7px}
+.m-sec .line{font-size:12px;color:#C2CBD9;line-height:1.75}
+.m-actions{display:flex;gap:9px;margin-top:16px}
+.m-btn{flex:1;height:42px;border-radius:11px;font-size:13px;font-weight:700;display:grid;place-items:center;transition:.15s}
+.m-btn.ghost{background:var(--panel2);border:1px solid var(--line2);color:#D8DFEC}
+.m-btn.ghost:hover{background:var(--panel3)}
+.m-btn.solid{background:linear-gradient(180deg,#3D97FF,#2E8BFF);color:#fff;box-shadow:0 8px 20px rgba(46,139,255,.3)}
+.m-btn.gold{background:var(--gold);color:#3A2C00}
+.m-btn:disabled{opacity:.5;cursor:not-allowed}
+.m-player{margin-top:14px;border-radius:12px;overflow:hidden;border:1px solid var(--line2);aspect-ratio:16/9;background:#05070B;position:relative}
+
+footer{margin-top:26px;border-top:1px solid var(--line);padding:18px 22px 26px;display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between;color:#4E5666;font-size:11.5px}
+footer b{color:#8C95A8;font-weight:700;display:block;margin-bottom:3px}
+
+/* ================= 响应式 ================= */
+@media (max-width:1180px){
+  .cols{grid-template-columns:minmax(0,1fr)}
+  .col-side{position:static;flex-direction:row;flex-wrap:wrap}
+  .col-side>.panel{flex:1 1 320px}
+}
+@media (max-width:1420px){
+  /* 队伍名优先：窄屏时频道徽章只留一个，把空间还给长队名（羽毛球双打名很长） */
+  .mchan .chip:nth-child(n+2){display:none}
+}
+@media (max-width:820px){
+  .rail{display:none}
+  .topbar{padding:0 14px;gap:10px}
+  .topnav{display:none}
+  .content{padding:14px 14px 4px}
+  .hero h1{font-size:24px}
+  .hero-art{display:none}
+  .hero-body{padding:20px}
+  .mrow{grid-template-columns:26px 52px minmax(0,1fr) 40px minmax(0,1fr) auto 16px;gap:7px;padding:10px 8px}
+  .mchan{display:none}
+  .col-side{flex-direction:column}
+  .icon-btn .txt{display:none}
+}
+@media (max-width:560px){
+  /* 手机上队伍名才是主角：头像和按钮都缩，别把名字挤成一个字 */
+  .mrow{grid-template-columns:20px 42px minmax(0,1.25fr) 26px minmax(0,1.25fr) auto 10px;gap:5px;padding:9px 5px}
+  .ava{width:21px;height:21px;flex-basis:21px;font-size:9px}
+  .mteam{gap:5px}
+  .mteam .tname{font-size:12px}
+  .mtime b{font-size:12.5px}
+  .mmid .vs{font-size:8.5px}
+  .mmid .bo{font-size:8.5px;padding:0 3px}
+  .live-chip{min-width:0;padding:4px 6px;font-size:10px;gap:3px}
+  .live-chip.ghost{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- ================= 左侧图标栏 ================= -->
+  <aside class="rail">
+    <div class="rail-logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12h4l2.5-6 4 12L16 12h5"/>
+      </svg>
+    </div>
+
+    <button class="rail-btn on" data-sport="all" title="全部赛事">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
+    </button>
+    <button class="rail-btn" data-sport="football" title="足球">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 7.5l4.2 3-1.6 5h-5.2l-1.6-5z" stroke-linejoin="round"/><path d="M12 3v4.5M4.2 9.6l3.4 2M19.8 9.6l-3.4 2M6.6 20.2l1.4-4.7M17.4 20.2l-1.4-4.7"/></svg>
+    </button>
+    <button class="rail-btn" data-sport="esports" title="电竞">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M7.5 8h9a4.5 4.5 0 014.4 3.6l.7 4a2.6 2.6 0 01-4.6 2.1L15 16H9l-2 1.7A2.6 2.6 0 012.4 15.6l.7-4A4.5 4.5 0 017.5 8z"/><path d="M8 11.5v3M6.5 13h3M15.5 12.2h.01M17.5 13.8h.01"/></svg>
+    </button>
+    <button class="rail-btn" data-sport="badminton" title="羽毛球">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l3 9-6 4-6-4z"/><path d="M9 3l3 9 3-9M6 12l6 4 6-4"/><path d="M12 16v5"/></svg>
+    </button>
+
+    <div class="rail-sep"></div>
+
+    <button class="rail-btn" id="railLive" title="直播源">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M10 9.5l5 2.5-5 2.5z" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="rail-btn" id="railFollow" title="我的关注">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.2 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>
+    </button>
+
+    <div class="rail-foot">
+      <button class="rail-btn" id="railTop" title="回到顶部">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div class="workspace">
+    <!-- ================= 顶栏 ================= -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="dot"></span>
+        海风看球
+      </div>
+      <nav class="topnav">
+        <a href="#schedule" class="on">赛程</a>
+        <a href="#live">直播</a>
+        <a href="#results">赛果</a>
+      </nav>
+      <div class="spacer"></div>
+
+      <label class="switch-wrap">
+        <span>防剧透</span>
+        <div class="switch" id="spoilerSwitch"></div>
+      </label>
+
+      <button class="icon-btn" id="followBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.2 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>
+        <span class="txt">我的关注</span>
+        <span class="cnt num" id="followCount">0</span>
+      </button>
+
+      <button class="btn-primary" id="openLiveBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        直播源
+      </button>
+    </header>
+
+    <div class="content">
+      <!-- 接口诊断横幅 -->
+      <div id="apiDiag" class="diag hidden"></div>
+
+      <div class="cols">
+        <!-- ---------- 左：Hero + 筛选 + 赛程 ---------- -->
+        <div class="col-main">
+          <section class="hero">
+            <div class="hero-body">
+              <span class="eyebrow"><i></i>LIVE · 未来 15 天</span>
+              <h1>近半个月，<br>有什么比赛？<em>在哪看？</em></h1>
+              <p>过去 15 天赛果 → 未来 15 天预告 · 时间已按 UTC+8 显示</p>
+              <div class="hero-actions">
+                <div class="cd">
+                  <span class="live-dot"></span>
+                  <div>
+                    <b id="cdTitle">最近一场 · —</b>
+                    <small>距开赛 <span class="t" id="cdTime">--:--:--</span></small>
+                  </div>
+                </div>
+                <span class="hero-tag" id="srcBadge">数据加载中…</span>
+              </div>
+            </div>
+            <div class="hero-art">
+              <svg viewBox="0 0 320 240" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                  <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#5AA8FF" stop-opacity=".95"/>
+                    <stop offset="100%" stop-color="#7B5CFF" stop-opacity=".55"/>
+                  </linearGradient>
+                  <radialGradient id="g2" cx="50%" cy="50%">
+                    <stop offset="0%" stop-color="#7B5CFF" stop-opacity=".5"/>
+                    <stop offset="100%" stop-color="#7B5CFF" stop-opacity="0"/>
+                  </radialGradient>
+                </defs>
+                <circle cx="196" cy="118" r="104" fill="url(#g2)"/>
+                <g opacity=".28" stroke="#8FB8FF" fill="none" stroke-width="1">
+                  <circle cx="196" cy="118" r="62"/><circle cx="196" cy="118" r="88"/>
+                  <path d="M96 118h200M196 18v200"/>
+                </g>
+                <g transform="translate(198 104) rotate(-12)">
+                  <!-- 羽毛裙：上宽下窄 -->
+                  <path d="M-30 -66 L30 -66 L10 -16 L-10 -16 Z" fill="url(#g1)" opacity=".95"/>
+                  <g stroke="#0B1020" stroke-width="1.2" opacity=".4">
+                    <path d="M-15 -66 L-5 -16"/><path d="M0 -66 L0 -16"/><path d="M15 -66 L5 -16"/>
+                  </g>
+                  <!-- 球头 -->
+                  <circle cx="0" cy="0" r="14" fill="#EDF3FF"/>
+                  <circle cx="0" cy="0" r="14" fill="none" stroke="#9CC4FF" stroke-width="2" opacity=".7"/>
+                  <path d="M-14 -2 A14 14 0 0 0 14 -2" fill="none" stroke="#B9D2FF" stroke-width="1.6" opacity=".9"/>
+                </g>
+                <!-- 运动轨迹 -->
+                <path d="M70 190 C 130 150, 250 150, 312 186" fill="none" stroke="#5AA8FF" stroke-width="1.5" stroke-dasharray="3 7" opacity=".35"/>
+                <g fill="#8FB8FF" opacity=".5">
+                  <circle cx="72" cy="46" r="2.2"/><circle cx="268" cy="196" r="2.6"/><circle cx="118" cy="204" r="1.8"/>
+                </g>
+              </svg>
+            </div>
+          </section>
+
+          <section class="panel filter">
+            <div class="filter-head">
+              <span class="label">赛程预告 · 未来 15 天</span>
+              <button id="backToday" class="hidden">← 回到今天</button>
+            </div>
+            <div class="strip" id="dateStrip"></div>
+            <div class="pills" id="sportTabs">
+              <button class="pill on" data-sport="all">全部</button>
+              <button class="pill" data-sport="football">⚽ 足球</button>
+              <button class="pill" data-sport="esports">🎮 电竞</button>
+              <button class="pill" data-sport="badminton">🏸 羽毛球</button>
+            </div>
+          </section>
+
+          <section class="panel" id="schedule">
+            <div class="panel-head">
+              <h2>赛程</h2>
+              <span class="hint" id="matchCount"></span>
+              <div class="spacer"></div>
+              <span class="hint">点任意一场看情报 / 直播</span>
+            </div>
+            <div id="matchList" class="mlist"></div>
+          </section>
+        </div>
+
+        <!-- ---------- 右：正在直播 + 最新赛果 ---------- -->
+        <aside class="col-side">
+          <section class="panel live-card" id="live">
+            <div class="live-head">
+              <span class="rlive"><span class="live-dot"></span>正在直播</span>
+              <div class="pager">
+                <button id="chPrev" title="上一个源">‹</button>
+                <span class="num" id="chPos">1/1</span>
+                <button id="chNext" title="下一个源">›</button>
+              </div>
+            </div>
+            <div class="live-sub" id="liveSub"><span>正在连接直播源…</span></div>
+            <div class="player" id="playerBox">
+              <div class="ph"><div class="big">▶</div><div>加载直播源…</div></div>
+            </div>
+            <div class="scoreboard" id="scoreboard"></div>
+            <div class="chan-list" id="chanList"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>最新赛果</h2>
+              <a class="link" href="#results">全部 →</a>
+            </div>
+            <div class="mini-list" id="miniResults"></div>
+          </section>
+        </aside>
+      </div>
+
+      <!-- ---------- 赛果区 ---------- -->
+      <section class="panel results" id="results">
+        <div class="res-head">
+          <h2>赛果回顾</h2>
+          <span class="hint" id="resultHint"></span>
+          <span class="hint">过去 15 天 · 按日期倒序</span>
+          <span class="hint hidden" id="spoilerHint">防剧透已开启 · 点击比分查看</span>
+          <div class="rpills" id="resultTabs">
+            <button class="rpill on" data-rsport="all">全部</button>
+            <button class="rpill rsport-tab" data-rsport="football">⚽ 足球</button>
+            <button class="rpill rsport-tab" data-rsport="esports">🎮 电竞</button>
+            <button class="rpill rsport-tab" data-rsport="badminton">🏸 羽毛球</button>
+          </div>
+        </div>
+        <div class="res-body">
+          <div id="resultList"></div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <div><b>海风看球</b>赛程预告 · 观赛渠道导航 · 直播源聚合</div>
+      <div>数据：football-data.org / PandaScore / UEFA / BWF · 直播源来自各频道公开信号，版权归原频道所有</div>
+    </footer>
+  </div>
+</div>
+
+<!-- ================= 比赛详情 Modal ================= -->
+<div class="modal" id="modal">
+  <div class="modal-bg" onclick="closeModal()"></div>
+  <div class="modal-panel" id="modalPanel"></div>
+</div>
+
+<div id="toastBox"></div>
+
+<script src="assets/hls.light.min.js"></script>
+<script>
+/* ================= 数据层（真实接口 + mock 回退） ================= */
+const SPORT_NAME = {football:'足球', esports:'电竞', badminton:'羽毛球'};
+const SPORT_ICON = {football:'⚽', esports:'🎮', badminton:'🏸'};
+/* 电竞子项目图标（真实数据里 game 字段会带具体游戏）
+   ⚠️ CS2 已按需求从数据源排除（见服务端 PS_GAMES），前端再做一道兜底过滤 */
+const GAME_ICON = {lol:'🟦', valorant:'🎯', dota2:'🛡️'};
+const GAME_NAME = {lol:'英雄联盟', valorant:'无畏契约', dota2:'DOTA2'};
+const BLOCKED_GAMES = ['csgo'];              // 不展示的电竞项目
+
+/* 时间跨度：未来 15 天预告（今天 + 15 天 = 16 个日期）+ 过去 15 天赛果 */
+const LOOKAHEAD_DAYS = 15;
+const DAY_LABEL = ['今天','明天','后天'];
+const WD = ['日','一','二','三','四','五','六'];
+
+/* 接口地址（按场景自动判定，也可手动指定 window.__API_BASE__ 覆盖）：
+   1. 手动指定 window.__API_BASE__ 时以它为准（后端在别的域名时用）
+   2. 双击文件打开（file://）→ 指向本地代理 http://localhost:8787（需先跑 server.js）
+   3. http / https 打开（本地 8787 或 Vercel 线上）→ 走【同域相对路径】/api/matches，零配置
+   拉取失败时会自动回退内置 demo 数据，页面不会白屏 */
+const API_BASE = window.__API_BASE__
+  ?? (location.protocol === 'file:' ? 'http://localhost:8787' : '');
+const USE_MOCK = false;
+
+function mk(day, hh, mm, sport, league, home, away, channels, info, followed=false){
+  const d = new Date(); d.setDate(d.getDate()+day); d.setHours(hh, mm, 0, 0);
+  return {id: `${sport}-${day}-${hh}${mm}-${home}`, day, dt:d, time:`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`,
+          sport, league, home, away, channels, info, followed, remind:false};
+}
+
+/* ============ 接口数据归一化 ============ */
+function normalize(raw) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return raw.map(m => {
+    const dt = new Date(m.utcDate);
+    const dayKey = new Date(dt); dayKey.setHours(0,0,0,0);
+    const day = Math.round((dayKey - today) / 86400000);   // 0=今天 1=明天 2=后天
+    return {
+      id: m.id,
+      day,
+      dateKey: `${dayKey.getFullYear()}-${String(dayKey.getMonth()+1).padStart(2,'0')}-${String(dayKey.getDate()).padStart(2,'0')}`,
+      dt,
+      // 羽毛球的时间藏在 BWF 的 Order of Play 文本里，多数场次上游就没给具体时刻，
+      // 后端会给 timeText='待定'；给了就用它，避免把「当天 00:00 UTC」显示成 08:00 的假时间
+      time: m.timeText || `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`,
+      sport: m.sport,
+      league: m.league,
+      home: m.home,
+      away: m.away || null,                                 // 羽毛球「抽签未出」的赛事级卡片没有对手
+      pending: !!m.pending,                                 // 同上：渲染成单行赛事名，不显示 "vs"
+      stage: m.stage || null,                               // 羽毛球放地点 / 轮次
+      channels: m.channels || [],
+      bo: m.bo || null,
+      game: m.game || null,                                 // 电竞子项目 lol/csgo/valorant/dota2
+      top: m.top || 0,                                      // 是否知名赛事
+      score: m.score || null,
+      status: m.status || null,
+      info: m.info || null,                                 // 免费数据源无情报，Modal 会优雅降级
+      followed: false, remind: false,
+    };
+  }).filter(m => m.day >= 0 && m.day <= LOOKAHEAD_DAYS         // 今天 ~ 未来 15 天
+              && !BLOCKED_GAMES.includes(m.game));             // CS2 不展示
+}
+
+/* 赛果归一化：半个月的赛果要按日期分组展示，所以这里把「日期键 / 日期标签 / 时间戳」一次算好 */
+function normalizeResults(raw) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return raw
+    .filter(r => r.utcDate && !BLOCKED_GAMES.includes(r.game))
+    .map(r => {
+      const dt = new Date(r.utcDate);
+      const dk = new Date(dt); dk.setHours(0,0,0,0);
+      const diff = Math.round((dk - today) / 86400000);
+      const dayLabel = diff === 0 ? '今天' : diff === -1 ? '昨天'
+                     : diff === -2 ? '前天' : `${dt.getMonth()+1}月${dt.getDate()}日`;
+      const hhmm = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+      return {
+        id: r.id,
+        sport: r.sport,
+        game: r.game || null,
+        league: r.league || '赛事',
+        home: r.home, away: r.away,
+        score: r.score || '—',
+        dateKey: `${dk.getFullYear()}-${String(dk.getMonth()+1).padStart(2,'0')}-${String(dk.getDate()).padStart(2,'0')}`,
+        dayNum: `${dt.getMonth()+1}月${dt.getDate()}日`,
+        wd: WD[dt.getDay()],
+        diff,
+        // 羽毛球赛果上游只给到「天」，后端会传 timeText='—'，避免显示时区换算出的假时间
+        time: r.timeText || hhmm,
+        ts: dt.getTime(),
+        when: `${dayLabel} ${hhmm}`,
+      };
+    })
+    .sort((a, b) => b.ts - a.ts);        // 全局按结束时间倒序：最新的赛果排最上
+}
+
+/* ============ 拉取真实数据 ============ */
+let MATCHES = [];          // 由接口填充；拉取失败则回退 mock
+let DATA_SOURCE = 'mock';
+/* 最近一次接口调用的结果 —— 用于把失败原因显示出来（0 = 请求没发出去 / 网络层失败） */
+let LAST_STATUS = 0, LAST_ERR = null;
+/* 接口自报的版本号（payload.build）。用来一眼分辨「线上还是旧版函数」——
+   中文化只在函数层做，函数没 Redeploy 的话页面就一直是英文，而症状和「上游没数据」长得一样 */
+let API_BUILD = '';
+/* 本地服务端有旧缓存时会先回旧数据、后台刷新（避免首屏卡 70 秒同步） */
+let STALE = false, STALE_AGE = 0;
+
+async function loadMatches() {
+  if (USE_MOCK) { MATCHES = MOCK_MATCHES; RESULTS = MOCK_RESULTS; DATA_SOURCE = 'mock'; return; }
+  const box = document.getElementById('matchList');
+  box.innerHTML = `<div class="empty"><span class="spinner"></span>正在加载最新赛程…</div>`;
+  LAST_STATUS = 0; LAST_ERR = null;
+  try {
+    const res = await fetch(`${API_BASE}/api/matches`, { cache: 'no-store' });
+    LAST_STATUS = res.status;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { matches = [], results = [], build = '', stale = false, age_s = 0 } = await res.json();
+    API_BUILD = build;
+    STALE = stale; STALE_AGE = age_s;
+    MATCHES = normalize(matches);
+    if (results.length) RESULTS = normalizeResults(results);   // 半个月赛果一并通过接口带回
+    DATA_SOURCE = 'live';
+    if (!MATCHES.length) throw new Error('接口返回 0 场赛程');
+  } catch (e) {
+    LAST_ERR = e.message;
+    console.warn('[loadMatches] 接口失败，回退 mock：', e.message, '· HTTP', LAST_STATUS);
+    MATCHES = MOCK_MATCHES; RESULTS = MOCK_RESULTS; DATA_SOURCE = 'mock';
+    toast('实时数据获取失败，已切换到演示数据', false);
+  }
+}
+
+/* ============ Mock 回退数据 ============ */
+const MOCK_MATCHES = [
+
+  mk(0,19,0,'esports','LPL 夏季赛 · 季后赛','BLG','TES',
+     [{n:'B站',free:1},{n:'虎牙',free:1}],
+     {form:['BLG 近5场 4胜1负','TES 近5场 3胜2负'], h2h:'近6次交手 BLG 4胜2负', note:'季后赛败者组生死战，中路 knight 与 JackeyLove 的对位值得关注。'}, true),
+  mk(0,19,35,'football','中超 · 第 26 轮','上海海港','山东泰山',
+     [{n:'咪咕视频',free:1},{n:'央视频',free:1}],
+     {form:['海港 近5场 3胜2平','泰山 近5场 2胜2平1负'], h2h:'近6次交手海港 2胜3平1负', note:'榜首之争，武磊出战成疑，赛前 1 小时公布首发。'}, true),
+  mk(0,20,0,'badminton','中国公开赛 · 1/4决赛','陈雨菲','安洗莹',
+     [{n:'央视体育',free:1},{n:'优酷体育',free:0}],
+     {form:['陈雨菲 本站未失一局','安洗莹 赛季胜率 89%'], h2h:'生涯交手 陈雨菲 7胜8负', note:'头号种子对决，预计 3 局大战。'}, true),
+  mk(0,22,0,'football','西甲 · 第 8 轮','巴塞罗那','马德里竞技',
+     [{n:'爱奇艺体育',free:0}],
+     {form:['巴萨 近5场 4胜1平','马竞 近5场 3胜2负'], h2h:'近6次交手巴萨 3胜2平1负', note:'莱万对阵旧主，西蒙尼执教马竞第 700 场。'}),
+  /* —— 明天 —— */
+  mk(1,3,0,'football','欧冠 · 小组赛第 3 轮','皇家马德里','曼城',
+     [{n:'咪咕视频',free:1},{n:'爱奇艺体育',free:0}],
+     {form:['皇马 近5场 4胜1负','曼城 近5场 5胜'], h2h:'近6次欧冠交手 皇马 3胜1平2负', note:'哈兰德伤愈复出进入大名单；贝林厄姆累积黄牌停赛。'}, true),
+  mk(1,3,0,'football','欧冠 · 小组赛第 3 轮','拜仁慕尼黑','巴黎圣日耳曼',
+     [{n:'爱奇艺体育',free:0}],
+     {form:['拜仁 近5场 5胜','巴黎 近5场 3胜2负'], h2h:'近6次交手拜仁 4胜2负', note:'姆巴佩战旧主，安联球场满座。'}),
+  mk(1,16,0,'esports','LCK 夏季赛 · 决赛','GEN','T1',
+     [{n:'虎牙',free:1}],
+     {form:['GEN 常规赛 18-0','T1 季后赛连胜 3 轮'], h2h:'近6次交手 GEN 4胜2负', note:'Faker 冲击个人第 11 座联赛冠军。'}, true),
+  mk(1,19,0,'esports','无畏契约 · 大师赛','EDG','FPX',
+     [{n:'B站',free:1},{n:'斗鱼',free:1}],
+     {form:['EDG 近5场 4胜1负','FPX 近5场 3胜2负'], h2h:'本年度交手 EDG 3胜1负', note:'CN 赛区内战，胜者晋级四强。'}),
+  mk(1,19,0,'badminton','中国公开赛 · 半决赛','石宇奇','昆拉武特',
+     [{n:'央视体育',free:1}],
+     {form:['石宇奇 近10场 9胜','昆拉武特 近10场 7胜'], h2h:'生涯交手 石宇奇 5胜2负', note:'石宇奇主场冲击赛季第 4 冠。'}),
+  /* —— 后天 —— */
+  mk(2,2,45,'football','英超 · 第 7 轮','阿森纳','利物浦',
+     [{n:'咪咕视频',free:1},{n:'爱奇艺体育',free:0}],
+     {form:['阿森纳 近5场 4胜1平','利物浦 近5场 4胜1负'], h2h:'近6次交手 2胜2平2负', note:'榜首大战，萨卡与萨拉赫的边路对决。'}),
+  mk(2,14,0,'badminton','中国公开赛 · 决赛','待定','待定',
+     [{n:'央视体育',free:1}],
+     {form:[], h2h:'—', note:'决赛日：五个单项依次进行，中午 12 点开始。'}),
+  mk(2,17,0,'esports','DOTA2 国际邀请赛','LGD','Spirit',
+     [{n:'B站',free:1}],
+     {form:['LGD 小组赛 12-2','Spirit 小组赛 10-4'], h2h:'近6次交手 LGD 2胜4负', note:'TI 淘汰赛胜者组首轮。'}),
+  mk(2,19,35,'football','中超 · 第 27 轮','北京国安','上海申花',
+     [{n:'央视频',free:1},{n:'咪咕视频',free:1}],
+     {form:['国安 近5场 2胜3负','申花 近5场 4胜1负'], h2h:'近6次交手申花 3胜2平1负', note:'京沪德比，工体门票已售罄。'}),
+];
+
+/* 赛果：优先用接口 /api/matches 返回的 results 字段；接口拿不到才回退这几条示例 */
+function mockAgo(daysAgo, hh, mm){
+  const d = new Date(); d.setDate(d.getDate()-daysAgo); d.setHours(hh,mm,0,0); return d.toISOString();
+}
+const MOCK_RESULTS = [
+  {utcDate:mockAgo(1,21,30), sport:'football', league:'英超 · 第 6 轮', home:'曼联', away:'切尔西', score:'2 : 1'},
+  {utcDate:mockAgo(1,19,0),  sport:'esports',  game:'lol', league:'LPL · 季后赛', home:'JDG', away:'WBG', score:'3 : 1'},
+  {utcDate:mockAgo(2,20,0),  sport:'badminton',league:'中国公开赛', home:'郑思维/黄雅琼', away:'渡边勇大/东野有纱', score:'2 : 0'},
+];
+let RESULTS = normalizeResults(MOCK_RESULTS);
+
+/* ================= 状态 ================= */
+let curDay = 0, curSport = 'all', spoiler = false;
+let resSport = 'all';                  // 赛果区项目筛选
+const expandedDays = new Set();        // 已「展开全部」的赛果日期（dateKey）
+
+/* ================= 直播源状态 ================= */
+let STREAMS = [];                      // 频道目录（来自 /api/streams）
+let curChannel = null;                 // 当前播放的频道
+let hls = null;                        // hls.js 实例
+let playerHost = null;                 // 当前挂载播放器的容器
+let STREAM_ERR = null;
+
+/* 前端兜底目录：接口没起来时至少还能点「去官方页」 */
+const FALLBACK_STREAMS = [
+  {id:'cctv5',   name:'CCTV-5 体育',      badge:'央视',    sports:['football','badminton'], kind:'page', page:'https://tv.cctv.com/live/cctv5/',  note:'央视体育主频道'},
+  {id:'cctv5p',  name:'CCTV-5+ 体育赛事', badge:'央视',    sports:['football','badminton'], kind:'page', page:'https://tv.cctv.com/live/cctv5p/', note:'赛事频道'},
+  {id:'bwf-yt',  name:'BWF TV（YouTube）',badge:'官方',    sports:['badminton'],             kind:'page', page:'https://www.youtube.com/@bwftv/live', note:'世界羽联官方频道'},
+  {id:'twitch-riot', name:'Riot Games',   badge:'官方',    sports:['esports'],               kind:'page', page:'https://www.twitch.tv/riotgames',  note:'LOL 官方英文流'},
+];
+
+/* 电竞项目 → 对应官方频道的固定映射 */
+const GAME_STREAM = {lol:'twitch-riot', valorant:'twitch-valorant', dota2:'twitch-dota2'};
+
+async function loadStreams(){
+  try {
+    const r = await fetch(`${API_BASE}/api/streams`, { cache:'no-store' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    if (!Array.isArray(j.channels) || !j.channels.length) throw new Error('空目录');
+    STREAMS = j.channels;
+  } catch(e) {
+    STREAM_ERR = e.message;
+    STREAMS = FALLBACK_STREAMS;
+  }
+}
+
+/* 给某场比赛挑最合适的频道：先看电竞固定映射，再看项目匹配，最后按可播放优先 */
+function channelsFor(m){
+  if(!m) return STREAMS.slice();
+  const list = STREAMS.filter(c => (c.sports||[]).includes(m.sport));
+  const fixed = m.game ? GAME_STREAM[m.game] : null;
+  const score = c => (c.id === fixed ? 100 : 0) + (c.playable === true ? 10 : c.playable === null ? 5 : 0);
+  return list.sort((a,b) => score(b) - score(a));
+}
+/* 这场比赛的「首选直播」：先要能播的，其次是要外部打开的（Twitch / 官方页），
+   全都探测失败才返回 null —— 列表上就不会出现点进去是死链的「直播」按钮 */
+function liveOf(m){
+  const list = channelsFor(m);
+  return list.find(c => c.playable === true) || list.find(c => c.playable === null) || null;
+}
+
+/* ================= 小工具 ================= */
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* 内联 onclick 里的字符串字面量：不能用 HTML 转义（&#39; 会被浏览器解码回 '，
+   把 JS 字符串提前闭合），必须按 JS 规则转义反斜杠和单引号 */
+const jid = (s) => String(s ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+/* 给每场比赛打上「相对日」标签，供 Modal 显示 */
+function labelMatches(){
+  MATCHES.forEach(m => {
+    m.dateLabel = DAY_LABEL[m.day] ?? `${m.dt.getMonth()+1}月${m.dt.getDate()}日 周${WD[m.dt.getDay()]}`;
+  });
+}
+
+/* 队伍头像：没有 Logo 数据，用「名字哈希 → 固定色 + 首字」生成，比空圆圈信息量大 */
+function hueOf(name){
+  let h = 0;
+  for (const ch of String(name||'?')) h = (h * 31 + ch.codePointAt(0)) % 360;
+  return h;
+}
+function avaStyle(name){
+  const h = hueOf(name);
+  return `--c1:hsl(${h} 62% 46%);--c2:hsl(${(h+36)%360} 58% 30%)`;
+}
+function initials(name){
+  const s = String(name||'?').trim();
+  if (/^[\u4e00-\u9fa5]/.test(s)) return s.slice(0, 1);
+  const parts = s.split(/[\s·.\-/]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return s.slice(0, 2).toUpperCase();
+}
+
+function dayShort(m){
+  if (m.day <= 2) return DAY_LABEL[m.day];
+  return `${m.dt.getMonth()+1}/${m.dt.getDate()}`;
+}
+
+function chBadges(chs){
+  return (chs||[]).map(c =>
+    `<span class="chip" title="${c.free?'免费':'付费'}·${esc(c.n)}">${esc(c.n)}${c.free?'':''}</span>`
+  ).join('');
+}
+
+/* ================= 日期条 ================= */
+function renderDateStrip(){
+  const box = document.getElementById('dateStrip');
+  const cntByDay = {};
+  MATCHES.forEach(m => { cntByDay[m.day] = (cntByDay[m.day] || 0) + 1; });
+
+  let html = '';
+  for(let i=0;i<=LOOKAHEAD_DAYS;i++){
+    const d = new Date(); d.setDate(d.getDate()+i);
+    const cnt = cntByDay[i] || 0;
+    const label = DAY_LABEL[i] ?? `周${WD[d.getDay()]}`;
+    html += `<button class="dcell ${i===curDay?'on':''}" data-day="${i}">
+      <b>${label}</b><span>${d.getMonth()+1}/${d.getDate()}</span><i>${cnt?cnt+' 场':'—'}</i></button>`;
+  }
+  box.innerHTML = html;
+  box.querySelectorAll('.dcell').forEach(b => {
+    b.onclick = () => { curDay = +b.dataset.day; renderDateStrip(); renderMatches(); };
+  });
+
+  const act = box.children[curDay];
+  if(act && box.scrollWidth > box.clientWidth){
+    // ⚠️ 不能用 act.offsetLeft：.strip 没有定位，offsetParent 是 body，
+    //    offsetLeft 会带上整个页面的左边距，导致日期条被莫名左移、第一格被裁掉
+    const dx = act.getBoundingClientRect().left - box.getBoundingClientRect().left;
+    box.scrollLeft = Math.max(0, box.scrollLeft + dx - 8);
+  }
+  const bt = document.getElementById('backToday');
+  if(bt) bt.classList.toggle('hidden', curDay === 0);
+}
+
+/* ================= 赛程行 ================= */
+function timeTagHTML(m){
+  // 羽毛球的开赛时刻上游只给到「天」（time='待定'/'全天'），无从判断是否正在进行
+  if(m.time === '待定' || m.time === '全天') return '';
+  const now = new Date();
+  if(m.day===0 && m.dt < now) return `<span class="live-tag">进行中</span>`;
+  if(m.day>=1 && m.dt.getHours()<8) return `<span class="live-tag warn">凌晨</span>`;
+  return '';
+}
+
+function vsText(m){
+  return m.away ? `${esc(m.home)} <span style="color:#5B6373">vs</span> ${esc(m.away)}` : esc(m.home);
+}
+
+function renderMatches(){
+  const list = document.getElementById('matchList');
+  const all = MATCHES.filter(m=>m.day===curDay && (curSport==='all'||m.sport===curSport))
+                    .sort((a,b)=>a.dt-b.dt);
+  const mc = document.getElementById('matchCount');
+  if(mc) mc.textContent = `${all.length} 场`;
+
+  if(!all.length){
+    list.innerHTML = `<div class="empty">这一天没有该项目的比赛，换个日期或项目看看</div>`;
+    return;
+  }
+
+  /* 按赛事分组：同一天的同一联赛挨在一起，扫读更快 */
+  const groups = {};
+  all.forEach(m=>{(groups[m.league]=groups[m.league]||[]).push(m);});
+
+  list.innerHTML = Object.entries(groups).map(([league, items])=>`
+    <div class="mgroup">
+      <div class="mgroup-head">
+        <span class="gname">${esc(league)}</span>
+        <span class="gcnt num">${items.length}</span>
+        <span class="gline"></span>
+        <span class="gtip">直播</span>
+      </div>
+      ${items.map(m=>{
+        const live = liveOf(m);
+        const hasAway = !!m.away;
+        return `<div class="mrow" data-id="${esc(m.id)}" onclick="openModal('${jid(m.id)}')">
+          <button class="star ${(m.followed||m.remind)?'on':''}" title="关注 / 开赛提醒"
+            onclick="event.stopPropagation();toggleRemind('${jid(m.id)}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="${(m.followed||m.remind)?'currentColor':'none'}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.2 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>
+          </button>
+          <div class="mtime">
+            <b class="${(m.time==='待定'||m.time==='全天')?'sm':''}">${esc(m.time)}</b>
+            <span>${dayShort(m)}</span>
+            ${timeTagHTML(m)}
+          </div>
+          <div class="mteam home">
+            <span class="tname">${esc(m.home)}</span>
+            <span class="ava" style="${avaStyle(m.home)}">${esc(initials(m.home))}</span>
+          </div>
+          <div class="mmid">
+            ${hasAway?'<span class="vs">VS</span>':''}
+            ${m.bo?`<span class="bo">${esc(m.bo)}</span>`:''}
+          </div>
+          <div class="mteam away">
+            ${hasAway
+              ? `<span class="ava" style="${avaStyle(m.away)}">${esc(initials(m.away))}</span><span class="tname">${esc(m.away)}</span>`
+              : `<span class="tname dim">${esc(m.stage || '抽签未出')}</span>`}
+          </div>
+          <div class="mchan">${chBadges((m.channels||[]).slice(0,2))}</div>
+          <div>${live ? `<span class="live-chip" onclick="event.stopPropagation();playFor('${jid(m.id)}')">● 直播</span>`
+                      : `<span class="live-chip ghost">—</span>`}</div>
+          <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+/* ================= 最新赛果（右栏） ================= */
+function renderMiniResults(){
+  const box = document.getElementById('miniResults');
+  if(!box) return;
+  const top = RESULTS.slice(0, 5);
+  if(!top.length){ box.innerHTML = '<div class="mini"><div class="l"><div class="tm muted">暂无赛果</div></div></div>'; return; }
+  box.innerHTML = top.map(r=>`
+    <div class="mini">
+      <div class="l">
+        <div class="lg">${SPORT_ICON[r.sport]||''} ${esc(r.league)}</div>
+        <div class="tm">${esc(r.home)} <span style="color:#5B6373">vs</span> ${esc(r.away)}</div>
+      </div>
+      <div class="sc">${esc(r.score)}</div>
+    </div>`).join('');
+}
+
+/* ================= 赛果区 ================= */
+const RESULT_PREVIEW = 6;
+
+function resultCard(r){
+  const icon = r.game ? (GAME_ICON[r.game] || SPORT_ICON[r.sport]) : SPORT_ICON[r.sport];
+  return `
+    <div class="rcard">
+      <div class="lg">${icon} ${esc(r.league)}</div>
+      <div class="row">
+        <div class="tms"><span>${esc(r.home)}</span><span class="lose">${esc(r.away)}</span></div>
+        <div class="sc num ${spoiler?'blur':''}" data-score="${esc(r.score)}">${spoiler?'0 : 0':esc(r.score)}</div>
+      </div>
+      <div class="tm">${esc(r.time)}</div>
+    </div>`;
+}
+
+function renderResults(){
+  const box = document.getElementById('resultList');
+  const hint = document.getElementById('resultHint');
+  const list = RESULTS.filter(r => resSport==='all' || r.sport===resSport);
+
+  if(!list.length){
+    box.innerHTML = `<div class="rcard" style="color:var(--txt3);font-size:12.5px">最近半个月没有已结束的比赛</div>`;
+    if(hint) hint.textContent = '';
+    document.getElementById('spoilerHint').classList.toggle('hidden', !spoiler);
+    return;
+  }
+
+  const groups = new Map();
+  for(const r of list){
+    if(!groups.has(r.dateKey)) groups.set(r.dateKey, []);
+    groups.get(r.dateKey).push(r);
+  }
+
+  box.innerHTML = [...groups.entries()].map(([key, items])=>{
+    const head = items[0];
+    const opened = expandedDays.has(key);
+    const shown = opened ? items : items.slice(0, RESULT_PREVIEW);
+    const rest = items.length - shown.length;
+    const dayTag = head.diff===0 ? '<span class="tag">今天</span>'
+                 : head.diff===-1 ? '<span class="tag" style="color:#7FB4FF">昨天</span>' : '';
+    return `
+    <div>
+      <div class="rday">
+        <b>${head.dayNum}</b>
+        <span class="wd">周${head.wd}</span>
+        ${dayTag}
+        <span class="ln"></span>
+        <span class="cnt">${items.length} 场</span>
+      </div>
+      <div class="rgrid">
+        ${shown.map(resultCard).join('')}
+        ${rest>0 ? `<button class="remore" onclick="expandResults('${key}')">展开当日全部 ${items.length} 场 ›</button>` : ''}
+        ${opened && items.length>RESULT_PREVIEW ? `<button class="remore" style="border-style:solid;color:#8C95A8" onclick="collapseResults('${key}')">收起</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  if(hint) hint.textContent = `${groups.size} 天 · ${list.length} 场`;
+
+  if(spoiler){
+    box.querySelectorAll('.sc').forEach(el=>{
+      el.onclick = ()=>{ el.textContent = el.dataset.score; el.classList.remove('blur'); };
+    });
+  }
+  document.getElementById('spoilerHint').classList.toggle('hidden', !spoiler);
+}
+
+function expandResults(key){ expandedDays.add(key); renderResults(); }
+function collapseResults(key){ expandedDays.delete(key); renderResults(); }
+
+/* ================= 播放器 ================= */
+function destroyPlayer(){
+  if(hls){ try{ hls.destroy(); }catch{} hls = null; }
+  if(playerHost){ playerHost.innerHTML = ''; playerHost = null; }
+}
+function placeholder(host, msg, opts={}){
+  host.innerHTML = `
+    <div class="ph">
+      <div class="big ${opts.playable?'playable':''}" ${opts.onclick?`onclick="${opts.onclick}"`:''}>▶</div>
+      <div>${msg}</div>
+      ${opts.page?`<a href="${opts.page}" target="_blank" rel="noopener" style="color:#7FB4FF;font-size:11.5px;font-weight:700">打开官方页 ↗</a>`:''}
+    </div>`;
+}
+
+/**
+ * 挂载频道到容器
+ *   hls    → hls.js 播 /api/stream?c=id（同源代理，绕开 CORS 与 http 混合内容）
+ *   twitch → player.twitch.tv 内嵌（parent 必须是当前 hostname）
+ *   page   → 只给外链，不硬嵌（避免白框）
+ */
+function mountChannel(ch, host){
+  if(!ch || !host) return;
+  destroyPlayer();
+  // 首次挂载时 playerHost 还是 null，destroyPlayer 不会清空任何东西，
+  // 静态占位（.ph）会一直盖在视频上 —— 所以这里必须显式清空容器
+  host.innerHTML = '';
+  playerHost = host;
+  curChannel = ch;
+
+  if(ch.kind === 'hls'){
+    const video = document.createElement('video');
+    video.playsInline = true; video.controls = true; video.muted = true; video.autoplay = true;
+    host.appendChild(video);
+    const badge = document.createElement('div');
+    badge.className = 'tag';
+    badge.innerHTML = `<i></i>${esc(ch.name)}`;
+    host.appendChild(badge);
+
+    const src = `${API_BASE}/api/stream?c=${encodeURIComponent(ch.id)}`;
+    const fail = (why) => {
+      const err = document.createElement('div');
+      err.className = 'err';
+      err.innerHTML = `<div style="font-weight:800;color:#E6EBF5">这个源暂时拉不起来</div>
+        <div>${esc(why||'上游无响应')}</div>
+        <a href="${ch.page||'#'}" target="_blank" rel="noopener" style="color:#7FB4FF;font-weight:700">打开官方页 ↗</a>`;
+      host.appendChild(err);
+    };
+
+    if(window.Hls && window.Hls.isSupported()){
+      // enableWorker 关掉：hls.js 的 worker 是 blob worker，在部分环境（headless / 严格 CSP）
+      // 里会静默失败，表现为「清单拿到了但一个分片都不加载」。播放器只有一个，主线程足够。
+      hls = new window.Hls({ liveDurationInfinity:true, lowLatencyMode:false, enableWorker:false });
+      window.__hls = hls;                       // 便于线上 Console 里排查（hls.levels / loadLevel）
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      hls.on(window.Hls.Events.MANIFEST_PARSED, ()=>{ video.play().catch(()=>{}); });
+      hls.on(window.Hls.Events.ERROR, (_, data)=>{
+        if(data.fatal) fail(data.details || data.type);
+      });
+    } else if(video.canPlayType('application/vnd.apple.mpegurl')){
+      video.src = src;
+      video.play().catch(()=>{});
+    } else {
+      fail('浏览器不支持 HLS');
+    }
+    return;
+  }
+
+  if(ch.kind === 'twitch'){
+    const f = document.createElement('iframe');
+    f.src = `https://player.twitch.tv/?channel=${encodeURIComponent(ch.twitch)}&parent=${location.hostname}&autoplay=false&muted=true`;
+    f.allow = 'autoplay; fullscreen; picture-in-picture';
+    f.allowFullscreen = true;
+    host.appendChild(f);
+    const badge = document.createElement('div');
+    badge.className = 'tag';
+    badge.innerHTML = `<i></i>${esc(ch.name)}`;
+    host.appendChild(badge);
+    return;
+  }
+
+  placeholder(host, '该频道需在官方页面观看', { page: ch.page });
+}
+
+/* 播放某场比赛对应的频道（列表上的「直播」按钮） */
+function playFor(matchId){
+  const m = MATCHES.find(x=>x.id===matchId);
+  const ch = channelsFor(m)[0];
+  const host = document.getElementById('playerBox');
+  if(ch) mountChannel(ch, host);
+  renderChannelList(m);
+  renderScoreboard(m);
+  document.getElementById('live')?.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+/* ================= 右侧直播面板 ================= */
+function chIndex(){ return Math.max(0, STREAMS.findIndex(c => c.id === curChannel?.id)); }
+
+function renderChannelList(m){
+  const box = document.getElementById('chanList');
+  if(!box) return;
+  const list = m ? channelsFor(m) : STREAMS;
+  if(!list.length){
+    box.innerHTML = '<div class="chan"><span class="nm muted">暂无匹配的直播源</span></div>';
+    return;
+  }
+  box.innerHTML = list.map(c=>{
+    const st = c.playable === true ? 'ok' : c.playable === false ? 'bad' : '';
+    const on = c.id === curChannel?.id;
+    return `<button class="chan ${on?'on':''}" onclick="pickChannel('${esc(c.id)}')">
+      <span class="st ${st}"></span>
+      <span class="nm">${esc(c.name)}</span>
+      <span class="bd">${esc(c.badge||'')}</span>
+      <span class="go">›</span>
+    </button>`;
+  }).join('');
+  const pos = document.getElementById('chPos');
+  if(pos) pos.textContent = `${chIndex()+1}/${list.length}`;
+}
+
+function pickChannel(id){
+  const ch = STREAMS.find(c=>c.id===id);
+  if(!ch) return;
+  const host = document.getElementById('playerBox');
+  mountChannel(ch, host);
+  renderChannelList(featuredMatch()?.m);
+  updateLiveSub(ch);
+}
+
+function updateLiveSub(ch){
+  const el = document.getElementById('liveSub');
+  if(!el) return;
+  const st = ch?.playable === true ? '<span style="color:var(--ok);font-weight:800">在线</span>'
+           : ch?.playable === false ? '<span style="color:#FF8A94;font-weight:800">离线</span>'
+           : '<span style="color:#8C95A8;font-weight:800">外部直播</span>';
+  el.innerHTML = `<b>${esc(ch?.name || '—')}</b><span class="sep">·</span>${esc(ch?.badge||'')}<span class="sep">·</span>${st}
+    <span class="note">${esc(ch?.note||'')}</span>`;
+}
+
+/* 当前/最近的一场比赛：优先正在进行的，其次下一场 */
+function featuredMatch(){
+  const now = Date.now();
+  const live = MATCHES.filter(m => m.dt <= now && now - m.dt < 2.5*3600e3).sort((a,b)=>b.dt-a.dt)[0];
+  if(live) return { m: live, live: true };
+  const next = MATCHES.filter(m => m.dt > now).sort((a,b)=>a.dt-b.dt)[0];
+  return next ? { m: next, live: false } : null;
+}
+
+function renderScoreboard(m){
+  const box = document.getElementById('scoreboard');
+  if(!box) return;
+  if(!m){ box.innerHTML = '<div class="sb-team"><span class="nm muted">近期没有比赛</span></div>'; return; }
+  const f = featuredMatch();
+  const isLive = f && f.m && f.m.id === m.id && f.live;
+  box.innerHTML = `
+    <div class="sb-team">
+      <span class="ava" style="${avaStyle(m.home)}">${esc(initials(m.home))}</span>
+      <span class="nm">${esc(m.home)}</span>
+    </div>
+    <div class="sb-score">
+      ${esc(m.time)}
+      <small>${isLive ? '直播中' : dayShort(m)}</small>
+    </div>
+    <div class="sb-team r">
+      <span class="nm">${esc(m.away || '待定')}</span>
+      ${m.away?`<span class="ava" style="${avaStyle(m.away)}">${esc(initials(m.away))}</span>`:'<span class="ava" style="--c1:#2C3444;--c2:#1B2230">?</span>'}
+    </div>`;
+}
+
+function renderLivePanel(){
+  const f = featuredMatch();
+  const m = f?.m;
+  renderScoreboard(m);
+  const list = m ? channelsFor(m) : STREAMS;
+  const first = liveOf(m);
+  const box = document.getElementById('playerBox');
+  if(first){
+    // 同一个频道已经在同一个容器里播着就别重建 —— 重建会闪黑一下、进度归零，
+    // 看起来像「直播断了」（截图里就拍到过 0:10 定格的画面）。
+    const already = curChannel && first.id === curChannel.id && playerHost === box;
+    if(!already) mountChannel(first, box);
+    updateLiveSub(first);
+  } else {
+    placeholder(box, '暂无可用直播源');
+  }
+  renderChannelList(m);
+}
+
+/* ================= 提醒 / 关注 ================= */
+function toggleRemind(id){
+  const m = MATCHES.find(x=>x.id===id);
+  if(!m) return;
+  m.remind = !m.remind;
+  const label = m.away ? `${m.home} vs ${m.away}` : m.home;
+  toast(m.remind ? `已加入关注 · ${label}，开赛前 30 分钟提醒`
+                 : `已取消关注 · ${label}`, m.remind);
+  renderMatches(); updateFollowCount();
+}
+function updateFollowCount(){
+  const n = MATCHES.filter(m=>m.remind||m.followed).length;
+  document.getElementById('followCount').textContent = n;
+}
+
+/* ================= 详情 Modal ================= */
+function openModal(id){
+  const m = MATCHES.find(x=>x.id===id);
+  if(!m) return;
+  const info = m.info;
+  const chs = channelsFor(m);
+  const playable = chs.find(c => c.playable !== false);
+
+  const infoBlock = info ? `
+      <div class="m-sec">
+        <div class="t">赛前情报</div>
+        ${info.form?.length?`<div class="line">${info.form.map(f=>`· ${esc(f)}`).join('<br>')}</div>`:''}
+        <div class="line" style="margin-top:4px">· 交锋记录：${esc(info.h2h||'—')}</div>
+        ${info.note?`<div class="line" style="margin-top:6px;color:#DDE4F0">${esc(info.note)}</div>`:''}
+      </div>`
+    : `<div class="m-sec"><div class="t">赛前情报</div>
+         <div class="line" style="color:#8C95A8">该场次暂无阵容 / 伤停数据（免费源不含此类情报）</div></div>`;
+
+  document.getElementById('modalPanel').innerHTML = `
+    <div class="m-body">
+      <div class="m-top">
+        <div style="flex:1;min-width:0">
+          <div class="m-league">${GAME_ICON[m.game] || SPORT_ICON[m.sport] || ''} ${esc(m.league)}</div>
+          <h3>${vsText(m)}</h3>
+          <div class="m-meta">
+            <span class="k">${esc(m.dateLabel || DAY_LABEL[m.day] || (m.dt.getMonth()+1)+'月'+m.dt.getDate()+'日')}</span>
+            <span>${m.time==='待定'?'开赛时间待定':esc(m.time)+' 开赛'}</span>
+            ${m.bo?`<span class="chip">${esc(m.bo)}</span>`:''}
+            ${m.stage && m.stage !== m.bo ? `<span class="chip">${esc(m.stage)}</span>`:''}
+          </div>
+        </div>
+        <button class="m-close" onclick="closeModal()">✕</button>
+      </div>
+
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
+        ${m.channels?.length ? chBadges(m.channels) : '<span class="chip">暂无播出渠道信息</span>'}
+      </div>
+
+      <div class="m-player" id="modalPlayer"></div>
+
+      ${infoBlock}
+
+      <div class="m-actions">
+        <button class="m-btn ${m.remind?'solid':'ghost'}" onclick="toggleRemind('${jid(m.id)}');openModal('${jid(m.id)}')">
+          ${m.remind?'已关注 · 点击取消':'开赛前 30 分钟提醒我'}
+        </button>
+        ${playable
+          ? `<button class="m-btn solid" onclick="playFor('${jid(m.id)}');closeModal()">播放这场</button>`
+          : `<a class="m-btn gold" href="${chs[0]?.page||'#'}" target="_blank" rel="noopener">去官方页观看 ↗</a>`}
+      </div>
+    </div>`;
+
+  const md = document.getElementById('modal');
+  md.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Modal 内嵌播放器：有可播源就直接挂上
+  const host = document.getElementById('modalPlayer');
+  if(playable) mountChannel(playable, host);
+  else placeholder(host, '该场次暂无可用直连直播源', { page: chs[0]?.page });
+}
+
+function closeModal(){
+  const host = document.getElementById('modalPlayer');
+  const wasInModal = playerHost === host;     // 只清理 Modal 里那个，别把右侧面板一起干掉
+  if(wasInModal) destroyPlayer();
+  const md = document.getElementById('modal');
+  md.classList.remove('open');
+  document.body.style.overflow = '';
+
+  // 右侧面板若已被 Modal 抢占（或本来就空），重新挂上当前频道
+  const box = document.getElementById('playerBox');
+  if(!box.children.length){
+    const f = featuredMatch();
+    const list = f?.m ? channelsFor(f.m) : STREAMS;
+    const first = liveOf(f?.m) || list[0];
+    if(first) mountChannel(first, box);
+  }
+}
+
+/* ================= Toast ================= */
+function toast(msg, good=true){
+  const t = document.createElement('div');
+  t.className = `toast ${good?'':'bad'}`;
+  t.innerHTML = `<i></i>${esc(msg)}`;
+  document.getElementById('toastBox').appendChild(t);
+  setTimeout(()=>{t.style.transition='opacity .3s';t.style.opacity='0';setTimeout(()=>t.remove(),320);},2500);
+}
+
+/* ================= 倒计时 ================= */
+function tick(){
+  const now = new Date();
+  const next = MATCHES.filter(m=>m.dt>now).sort((a,b)=>a.dt-b.dt)[0];
+  const tEl = document.getElementById('cdTime'), nEl = document.getElementById('cdTitle');
+  if(!tEl||!nEl) return;
+  if(!next){ nEl.textContent='近期赛事已播完'; tEl.textContent='--:--:--'; return; }
+  nEl.textContent = `最近一场 · ${next.away ? `${next.home} vs ${next.away}` : next.home}`;
+  let s = Math.max(0, Math.floor((next.dt-now)/1000));
+  const h = String(Math.floor(s/3600)).padStart(2,'0'), m2 = String(Math.floor(s%3600/60)).padStart(2,'0'), ss = String(s%60).padStart(2,'0');
+  tEl.textContent = `${h}:${m2}:${ss}`;
+}
+
+/* ================= 筛选（左栏 + 顶部胶囊联动） ================= */
+function setSport(sport){
+  curSport = sport;
+  document.querySelectorAll('[data-sport]').forEach(x=>{
+    x.classList.toggle('on', x.dataset.sport === sport);
+  });
+  renderMatches();
+}
+document.querySelectorAll('.pill').forEach(b=>{ b.onclick = ()=>setSport(b.dataset.sport); });
+document.querySelectorAll('.rail-btn[data-sport]').forEach(b=>{ b.onclick = ()=>setSport(b.dataset.sport); });
+
+/* ================= 赛果项目筛选 ================= */
+document.querySelectorAll('.rsport-tab, .rpill[data-rsport="all"]').forEach(b=>{
+  b.onclick = ()=>{
+    resSport = b.dataset.rsport;
+    document.querySelectorAll('#resultTabs .rpill').forEach(x=>x.classList.toggle('on', x===b));
+    expandedDays.clear();
+    renderResults();
+  };
+});
+
+/* ================= 其他交互 ================= */
+document.getElementById('backToday').onclick = ()=>{
+  curDay = 0;
+  renderDateStrip(); renderMatches();
+  document.getElementById('dateStrip').scrollIntoView({behavior:'smooth', block:'nearest'});
+};
+
+document.getElementById('spoilerSwitch').onclick = ()=>{
+  spoiler = !spoiler;
+  document.getElementById('spoilerSwitch').classList.toggle('on', spoiler);
+  renderResults();
+};
+
+document.getElementById('followBtn').onclick = ()=>{
+  const n = MATCHES.filter(m=>m.remind||m.followed).length;
+  toast(n ? `你关注了 ${n} 场比赛，开赛前 30 分钟提醒` : '还没有关注的比赛，点行首的星标即可', n>0);
+};
+
+document.getElementById('openLiveBtn').onclick = ()=>{
+  document.getElementById('live')?.scrollIntoView({behavior:'smooth', block:'center'});
+};
+
+document.getElementById('railLive').onclick = ()=>{
+  document.getElementById('live')?.scrollIntoView({behavior:'smooth', block:'center'});
+};
+document.getElementById('railFollow').onclick = ()=>{
+  document.querySelectorAll('.star.on').length
+    ? document.querySelector('.star.on').closest('.mrow')?.scrollIntoView({behavior:'smooth', block:'center'})
+    : toast('还没有关注的比赛，点行首星标即可', false);
+};
+document.getElementById('railTop').onclick = ()=>window.scrollTo({top:0,behavior:'smooth'});
+
+document.getElementById('chPrev').onclick = ()=>{ rotateChannel(-1); };
+document.getElementById('chNext').onclick = ()=>{ rotateChannel(1); };
+function rotateChannel(dir){
+  const list = channelsFor(featuredMatch()?.m);
+  if(!list.length) return;
+  let i = list.findIndex(c=>c.id===curChannel?.id);
+  i = (i + dir + list.length) % list.length;
+  pickChannel(list[i].id);
+}
+
+/* ================= 接口诊断横幅 ================= */
+function renderApiDiag(){
+  const el = document.getElementById('apiDiag');
+  if(!el) return;
+  if(DATA_SOURCE === 'live' && API_BUILD){
+    el.classList.add('hidden'); el.innerHTML=''; return;
+  }
+  if(DATA_SOURCE === 'live' && !API_BUILD){
+    el.innerHTML = `<b>接口在跑，但没自报版本号</b> —— 线上多半是旧版函数。
+      打开 <code>/api/selfcheck</code> 看 build 与 sources；重新 Redeploy 整个 deploy 目录即可。`;
+    el.classList.remove('hidden'); return;
+  }
+  el.innerHTML = `<b>现在是演示数据</b> —— 实时接口返回 ${LAST_STATUS||'网络失败'}${LAST_ERR?`（${esc(LAST_ERR)}）`:''}。
+    本地请先跑 <code>node server.js</code>；线上看 <code>/api/selfcheck</code>。`;
+  el.classList.remove('hidden');
+}
+
+function renderBadge(){
+  const el = document.getElementById('srcBadge');
+  if(!el) return;
+  if(DATA_SOURCE === 'live'){
+    el.textContent = `实时数据 · ${MATCHES.length} 场` + (API_BUILD?` · 接口 ${API_BUILD}`:'')
+      + (STALE ? ` · 刷新中（${Math.max(1, Math.round(STALE_AGE/60))} 分钟前）` : '');
+  } else {
+    el.textContent = '演示数据（接口未连接）';
+  }
+}
+
+/* ================= 启动 ================= */
+/* 顶层 await 在普通 <script> 里是非法的（只有 module 才能用），这里用自执行函数包一层 */
+(async function init(){
+  labelMatches();
+  await loadMatches();
+  labelMatches();
+  renderDateStrip();
+  renderMatches();
+  renderResults();
+  renderMiniResults();
+  renderApiDiag();
+  renderBadge();
+  updateFollowCount();
+  tick();
+  setInterval(tick, 1000);
+
+  // 直播源单独加载：它要对每个频道做上游探活，慢的时候 5~10 秒，
+  // 绝不能拖住赛程首屏 —— 先渲染赛程，拿到目录后再补「直播」按钮和右栏播放器
+  loadStreams().then(()=>{
+    renderLivePanel();
+    renderMatches();          // 直播按钮依赖 channelsFor()，目录到了要重绘一次
+  });
+})();
+</script>
+</body>
+</html>
